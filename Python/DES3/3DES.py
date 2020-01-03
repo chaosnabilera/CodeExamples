@@ -7,7 +7,8 @@ import random
 
 def do3DES(iFname, key, mode, oFname):
 	keySHA256 = hashlib.sha256(key.encode('utf-8')).digest()
-	iv, key = keySHA256[:8], keySHA256[8:]
+	key = keySHA256[:24]
+	iv = bytearray(random.getrandbits(8) for i in range(8))
 
 	ctx = DES3.new(key, DES3.MODE_CBC, iv)
 
@@ -17,11 +18,18 @@ def do3DES(iFname, key, mode, oFname):
 
 	with open(iFname, 'rb') as iFile:
 		iData = iFile.read()
+
 		with open(oFname, 'wb') as oFile:
 			if mode == 'enc':
+				# Write iv (which makes encrypted data 8 bytes more than original)
+				oFile.write(ctx.encrypt(bytearray(random.getrandbits(8) for i in range(8))))
+				# encrypt data
 				oFile.write(ctx.encrypt(iData))
 			else:
-				oFile.write(ctx.decrypt(iData))
+				# consume iv
+				ctx.decrypt(iData[:8])
+				# decrypt data
+				oFile.write(ctx.decrypt(iData[8:]))
 
 def printUsageAndExit():
 	print("Usage: python {} <input filename> [enc|dec] <key>".format(sys.argv[0]))
