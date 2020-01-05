@@ -1,11 +1,12 @@
-import random
+import os
 import sys
 
 def createRandomFile(size, oFname):
 	with open(sys.argv[2], 'wb') as oFile:
 		while size > 0:
 			writeSize = 1024*1024 if (size > 1024*1024) else size
-			oFile.write(bytearray(random.getrandbits(8) for r in range(writeSize)))
+			#oFile.write(bytearray(random.getrandbits(8) for r in range(writeSize)))
+			oFile.write(os.urandom(writeSize)) # This is much faster
 			size -= writeSize
 
 if len(sys.argv) != 3:
