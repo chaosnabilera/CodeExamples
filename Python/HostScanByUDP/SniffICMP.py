@@ -2,6 +2,7 @@ import os
 import socket
 import struct
 import sys
+import time
 
 from collections import namedtuple
 
@@ -14,7 +15,6 @@ IPHeader = namedtuple('IPHeader',
 
 ICMPHeader = namedtuple('ICMPHeader',['ptype','code','checksum','others'])
 
-# Read https://docs.microsoft.com/en-us/windows/win32/winsock/tcp-ip-raw-sockets-2 for details of Raw sockets in Windows
 
 def parse_ipheader(data):
 	ipheader = struct.unpack('!BBHHHBBH4s4s', data[:20])
@@ -51,15 +51,19 @@ def parse_ipheader(data):
 		time_to_live, protocol, header_checksum, 
 		source_ipaddress, destination_ipadress)
 
+
 def parse_icmpheader(data):
 	ptype, code, checksum, others = struct.unpack('!BBH4s', data[:8])
 	return ICMPHeader(ptype, code, checksum, others)
+
 
 #
 # Note: Recv on raw socket in Windows does not consume data
 #       Datagrams are **COPIED** into **ALL** raw sockets that meet the condition
 #
-def recvData(sock):
+# Read https://docs.microsoft.com/en-us/windows/win32/winsock/tcp-ip-raw-sockets-2 for details of Raw sockets in Windows
+#
+def recvDataFromRawSocket(sock):
 	data = ''
 	try:
 		# Max IP datagram size os 65535
@@ -96,9 +100,11 @@ def sniffIP(host):
 
 	count = 1
 	while True:
-		data = recvData(sniffer)
+		data = recvDataFromRawSocket(sniffer)
 		ipheader = parse_ipheader(data[:20])
-		print(ipheader)
+		if ipheader.protocol == 'ICMP':
+			icmpheader = parse_icmpheader(data[ipheader.header_length:ipheader.header_length+8])
+			print(ipheader.source_ipaddress, ipheader.destination_ipadress, icmpheader)
 		count += 1
 	"""
 	except KeyboardInterrupt:
@@ -107,6 +113,7 @@ def sniffIP(host):
 	"""
 
 def printUsageAndExit():
+	print("Prints ICMP messages using Raw socket")
 	print("Usage 1: python {}".format(sys.argv[0]))
 	print("Usage 2: python {} <IPv4 address to bind>".format(sys.argv[0]))
 	sys.exit(1)
@@ -124,3 +131,5 @@ if __name__ == '__main__':
 			sys.exit(1)
 
 	sniffIP(host)
+
+	
